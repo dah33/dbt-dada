@@ -3,3 +3,6 @@ dbt_modules/
 logs/
 ideas/
 *.sublime*
+analysis/
+models/
+snapshots/
