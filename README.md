@@ -1,6 +1,6 @@
-# Dada is making DAta about DAta
+# dada is making DAta about DAta
  
-Dada is an add-on package for [`dbt`](https://www.getdbt.com/) that helps
+`dada` is an add-on package for [`dbt`](https://www.getdbt.com/) that helps
 you, the heroic data analyst or engineer, rapidly explore and profile the data in 
 your data warehouse.
 
