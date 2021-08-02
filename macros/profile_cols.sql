@@ -3,12 +3,10 @@
     data_type = True,
     n_null=True, null_rate=True,
     n_unique=True, unique_rate=True,
-    n_empty=True, empty_rate=False,
-    n_trailing=True, trailing_rate=False,
+    n_empty=False, n_trailing=False,
     min_value=True, max_value=True, avg_value=False,
-    min_length=False, max_length=False, 
-    most_common=False,
-    top_five=True
+    max_characters=False,
+    most_common_values=True
     ) %}
 
     {% set cols = adapter.get_columns_in_relation(relation) %}
@@ -19,7 +17,7 @@
 
         '{{ col.name }}' as column_name
 
-    {% if data_type -%},
+    {%- if data_type %},
         '{{ col.data_type }}' as data_type
     {% endif %}
 
@@ -56,19 +54,7 @@
         count(case when {{ adapter.quote(col.name) }} = '' then 1 end)
         {% else %}
         null::integer
-        {%- endif %} as n_empty
-    {% endif %}
-
-    {%- if empty_rate %},
-        {%- if col.is_string() %}
-        trunc(
-            10000.0 * 
-            count(case when {{ adapter.quote(col.name) }} = '' then 1 end)
-            / count(*)
-        ) / 10000.0
-        {% else %}
-        null::integer
-        {%- endif %} as empty_rate
+        {% endif %} as n_empty
     {% endif %}
 
     {%- if n_trailing %},
@@ -76,19 +62,7 @@
         count(case when {{ adapter.quote(col.name) }} != rtrim({{ adapter.quote(col.name) }}) then 1 end)
         {% else %}
         null::integer
-        {%- endif %} as n_trailing
-    {% endif %}
-
-    {%- if trailing_rate %},
-        {%- if col.is_string() %}
-        trunc(
-            10000.0 * 
-            count(case when {{ adapter.quote(col.name) }} != rtrim({{ adapter.quote(col.name) }}) then 1 end)
-            / count(*)
-        ) / 10000.0
-        {% else %}
-        null::integer
-        {%- endif %} as trailing_rate
+        {% endif %} as n_trailing
     {% endif %}
 
     {#
@@ -98,22 +72,22 @@
     -- to enhance dbt's Column class with is_date and is_boolean properties.
     #}
     {%- if min_value %},
-        {%- if col.is_number() %}
+        {%- if col.is_string() %}
+        null::varchar
+        {% elif col.is_number() %}
         cast(min({{ adapter.quote(col.name) }}) as varchar)
         {% else %}
-            {% if col.is_string() %}'"' || {% endif -%}
         min(cast({{ adapter.quote(col.name) }} as varchar))
-            {%- if col.is_string() %} || '"'{% endif %}
         {% endif %} as min_value
     {% endif %}
 
     {%- if max_value %},
-        {%- if col.is_number() %}
+        {%- if col.is_string() %}
+        null::varchar
+        {% elif col.is_number() %}
         cast(max({{ adapter.quote(col.name) }}) as varchar)
         {% else %}
-            {% if col.is_string() %}'"' || {% endif -%}
         max(cast({{ adapter.quote(col.name) }} as varchar))
-            {%- if col.is_string() %} || '"'{% endif %}
         {% endif %} as max_value
     {% endif %}
 
@@ -125,51 +99,34 @@
         {% endif %} as avg_value
     {% endif %}
 
-    {%- if min_length %},
-        {%- if col.is_string() %}
-        min(char_length({{ adapter.quote(col.name) }}))
-        {% else %}
-        null::integer
-        {% endif %} as min_length
-    {% endif %}
-
-    {%- if max_length %},
+    {%- if max_characters %},
         {%- if col.is_string() %}
         max(char_length({{ adapter.quote(col.name) }}))
         {% else %}
         null::integer
-        {% endif %} as max_length
+        {% endif %} as max_characters
     {% endif %}
 
-    {%- if most_common %},
-    (  
-        select 
-        {% if col.is_string() %}'"' || {% endif -%}
-            cast({{ adapter.quote(col.name) }} as varchar) 
-        {%- if col.is_string() %} || '"'{% endif %}
-        from {{ relation }} 
-        group by {{ adapter.quote(col.name) }} 
-        order by count(*) desc 
-        limit 1
-    ) as most_common
-    {% endif %}
-
-    {%- if top_five %},
+    {%- if most_common_values %},
         array_to_string(
             array(
-                select
-                coalesce(
-                    {% if col.is_string() %}'"' || {% endif -%}
-                    cast({{ adapter.quote(col.name) }} as varchar)
-                    {%- if col.is_string() %} || '"'{% endif %},
-                    'NULL'
+                with freq_table as (
+                    select
+                        coalesce(
+                            {% if col.is_string() %}'"' || {% endif -%}
+                            cast({{ adapter.quote(col.name) }} as varchar)
+                            {%- if col.is_string() %} || '"'{% endif %},
+                            'NULL'
+                        ) as val, 
+                        count(*) as freq
+                    from {{ relation }}
+                    group by 1
+                    order by count(*) desc
+                    limit 5
                 )
-                from {{ relation }}
-                group by 1 {# todo show nulls #}
-                order by count(*) desc
-                limit 5
+                select val || ' (' || freq || ')' from freq_table
             ), 
-        ', ') as top_five
+        ', ') as most_common_values
     {% endif %}
 
     from {{ relation }}
