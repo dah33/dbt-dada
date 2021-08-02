@@ -1,6 +1,19 @@
+{% macro col_is_string(col) %}
+    {{ return(col.is_string()) }}
+{% endmacro %}
+
+{% macro col_is_number(col) %}
+    {{ return(col.is_number()) }}
+{% endmacro %}
+
+{% macro profile_strings(relation) %}
+    {{ profile_cols(relation, col_filter=col_is_string, n_empty=True, n_trailing=True, min_value=False, max_value=False, max_characters=True )}}
+{% endmacro %}
+
 {% macro profile_cols(
     relation,
-    data_type = True,
+    col_filter=None,
+    data_type=True,
     n_null=True, null_rate=True,
     n_unique=True, unique_rate=True,
     n_empty=False, n_trailing=False,
@@ -11,7 +24,7 @@
 
     {% set cols = adapter.get_columns_in_relation(relation) %}
 
-    {%- for col in cols %}
+    {%- for col in cols if not col_filter or col_filter(col) %}
     
     select
 
