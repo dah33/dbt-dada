@@ -10,6 +10,10 @@
     {{ profile_cols(relation, col_filter=col_is_string, n_empty=True, n_trailing=True, min_value=False, max_value=False, max_characters=True )}}
 {% endmacro %}
 
+{% macro profile_numbers(relation) %}
+    {{ profile_cols(relation, col_filter=col_is_number, avg_value=True )}}
+{% endmacro %}
+
 {% macro profile_cols(
     relation,
     col_filter=None,
