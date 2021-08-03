@@ -6,18 +6,17 @@
     {{ return(col.is_number()) }}
 {% endmacro %}
 
-{% macro profile_strings(relation, col_list=None) %}
-    {{ profile_cols(relation, col_list, col_is_string, n_empty=True, n_trailing=True, min_value=False, max_value=False, max_characters=True )}}
+{% macro profile_strings(relation) %}
+    {{ profile_cols(relation, col_is_string, n_empty=True, n_trailing=True, min_value=False, max_value=False, max_characters=True )}}
 {% endmacro %}
 
-{% macro profile_numbers(relation, col_list=None) %}
-    {{ profile_cols(relation, None, col_is_number, avg_value=True )}}
+{% macro profile_numbers(relation) %}
+    {{ profile_cols(relation, col_is_number, avg_value=True )}}
 {% endmacro %}
 
 {% macro profile_cols(
     relation,
-    col_list=None,
-    col_filter=None,
+    cols=None,
     data_type=True,
     n_null=True, null_rate=True,
     n_unique=True, unique_rate=True,
@@ -30,12 +29,14 @@
     {% set all_cols = adapter.get_columns_in_relation(relation) %}
 
     {% set use_cols = [] %}
-    {% for col in all_cols if (not col_list or col.name is in(col_list)) and (not col_filter or col_filter(col)) %}
+    {% for col in all_cols if cols is none 
+        or (cols is sequence and col.name is in(cols)) 
+        or (cols is callable and cols(col)) %}
         {{ use_cols.append(col) or "" }}
     {% endfor %}
 
     {% if use_cols|length == 0 %}
-        {% set msg = 'No columns match for the arguments `col_list` and `col_filter`' %}
+        {% set msg = 'No columns match the argument `cols`' %}
         {{ exceptions.warn(msg) }}
         select '{{ msg }}' as error
     {% endif %}
