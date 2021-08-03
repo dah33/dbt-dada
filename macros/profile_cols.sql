@@ -18,8 +18,8 @@
 --Output 0 or 1 iff input is 0 or 1, otherwise
 --show the number with required precision in range (0,1).
 --
---Same as TRUNC(number, precision) but only 0 -> 0;
---anything slightly above 0 maps to power(0.1, precision).
+--Same as TRUNC(number, precision) but anything slightly 
+--above 0 maps to power(0.1, precision).
 #}
 {% macro rate_with_precision(precision) %}
     case when ({{ caller() }}) = 0 then 0.0
