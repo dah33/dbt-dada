@@ -36,6 +36,7 @@
 {%- macro profile_cols(
     relation,
     cols=None,
+    sample_n=0,
     rate_precision=4,
     data_type=True,
     n_null=True, null_rate=True,
@@ -64,6 +65,10 @@
 
     with source as (
         select * from {{ relation }}
+        {% if sample_n > 0 %}
+        order by random() 
+        limit {{ sample_n }}
+        {% endif %}
     )
 
     {%- for col in use_cols %}
