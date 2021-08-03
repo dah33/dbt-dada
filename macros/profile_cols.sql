@@ -14,7 +14,7 @@
     {{ profile_cols(relation, col_is_number, avg_value=True )}}
 {% endmacro %}
 
-{% macro profile_cols_quick(relation) %}
+{% macro profile_cols_10k(relation) %}
     {{ profile_cols(relation, sample_n=10000, null_rate=False, distinct_rate=False, info_rate=True )}}
 {% endmacro %}
 
