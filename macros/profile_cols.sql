@@ -14,9 +14,29 @@
     {{ profile_cols(relation, col_is_number, avg_value=True )}}
 {% endmacro %}
 
-{% macro profile_cols(
+{#
+--Output 0 or 1 iff input is 0 or 1, otherwise
+--show the number with required precision in range (0,1).
+--
+--Same as TRUNC(number, precision) but only 0 -> 0;
+--anything slightly above 0 maps to power(0.1, precision).
+#}
+{% macro rate_with_precision(precision) %}
+    case when ({{ caller() }}) = 0 then 0.0
+    else 
+        greatest(1.0, 
+            trunc(
+                {{- caller() -}}
+                * power(10.0, {{precision}}) / count(*)
+            ) 
+        ) / power(10.0, {{precision}})
+    end
+{% endmacro %}
+
+{%- macro profile_cols(
     relation,
     cols=None,
+    rate_precision=4,
     data_type=True,
     n_null=True, null_rate=True,
     n_unique=True, unique_rate=True,
@@ -56,13 +76,9 @@
         {% endif %}
 
         {%- if null_rate %},
-            case when count(case when {{ adapter.quote(col.name) }} is null then 1 end) = 0 then 0.0
-            else greatest(0.0001, trunc(
-                    10000.0 * 
-                    count(case when {{ adapter.quote(col.name) }} is null then 1 end)
-                    / count(*)
-                ) / 10000.0) 
-            end as null_rate
+            {% call rate_with_precision(rate_precision) %}
+                count(case when {{ adapter.quote(col.name) }} is null then 1 end)
+            {% endcall %} as null_rate
         {% endif %}
 
         {%- if n_unique %},
