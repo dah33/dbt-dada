@@ -44,11 +44,9 @@
     rate_precision=4,
     data_type=True,
     n_null=True, null_rate=True,
-    n_unique=True, unique_rate=True,
-    info_rate=False,
-    n_empty=False, n_trailing=False,
+    n_unique=True, unique_rate=True, info_rate=False,
+    n_empty=False, n_trailing=False, max_characters=False,
     min_value=True, max_value=True, avg_value=False,
-    max_characters=False,
     most_common_values=True
     ) %}
 
@@ -160,6 +158,14 @@
             {% endif %} as n_trailing
         {% endif %}
 
+        {%- if max_characters %},
+            {%- if col.is_string() %}
+            max(char_length({{ adapter.quote(col.name) }}))
+            {% else %}
+            null::integer
+            {% endif %} as max_characters
+        {% endif %}
+
         {#
         -- There is no min/max for boolean on PostgreSQL, so this converts them to 
         -- a string ('true' or 'false') before ordering, however it also converts
@@ -192,14 +198,6 @@
             {% else %}
             null::float
             {% endif %} as avg_value
-        {% endif %}
-
-        {%- if max_characters %},
-            {%- if col.is_string() %}
-            max(char_length({{ adapter.quote(col.name) }}))
-            {% else %}
-            null::integer
-            {% endif %} as max_characters
         {% endif %}
 
         {%- if most_common_values %},
