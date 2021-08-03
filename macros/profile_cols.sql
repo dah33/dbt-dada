@@ -7,15 +7,15 @@
 {% endmacro %}
 
 {% macro profile_strings(relation) %}
-    {{ profile_cols(relation, col_is_string, n_empty=True, n_trailing=True, min_value=False, max_value=False, max_characters=True )}}
+    {{ profile_cols(relation, col_is_string, n_empty=True, n_trailing=True, min_value=False, max_value=False )}}
 {% endmacro %}
 
 {% macro profile_numbers(relation) %}
     {{ profile_cols(relation, col_is_number, avg_value=True )}}
 {% endmacro %}
 
-{% macro profile_cols_10k(relation) %}
-    {{ profile_cols(relation, sample_n=10000, null_rate=False, unique_rate=False, info_rate=True, n_empty=True, n_trailing=True, avg_value=True, max_characters=True )}}
+{% macro profile_cols_quick(relation) %}
+    {{ profile_cols(relation, sample_n=10000, null_rate=False, distinct_rate=False, info_rate=True )}}
 {% endmacro %}
 
 {#
@@ -44,7 +44,7 @@
     rate_precision=4,
     data_type=True,
     n_null=True, null_rate=True,
-    n_unique=True, unique_rate=True, info_rate=False,
+    n_distinct=True, distinct_rate=True, info_rate=False,
     n_empty=False, n_trailing=False, max_characters=False,
     min_value=True, max_value=True, avg_value=False,
     most_common_values=True
@@ -106,11 +106,11 @@
             end as null_rate
         {% endif %}
 
-        {%- if n_unique %},
-            count(distinct {{ adapter.quote(col.name) }} ) as n_unique
+        {%- if n_distinct %},
+            count(distinct {{ adapter.quote(col.name) }} ) as n_distinct
         {% endif %}
 
-        {%- if unique_rate %},
+        {%- if distinct_rate %},
             {# 
             {% call rate_with_precision(rate_precision) %}
                 count(distinct {{ adapter.quote(col.name) }})
@@ -125,7 +125,7 @@
                     * power(10.0, {{ rate_precision }}) / count(*)
                 ) 
             ) / power(10.0, {{ rate_precision }})
-            end as unique_rate
+            end as distinct_rate
         {% endif %}
 
         {%- if info_rate %},
