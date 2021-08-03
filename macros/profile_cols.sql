@@ -7,11 +7,15 @@
 {% endmacro %}
 
 {% macro profile_strings(relation) %}
-    {{ profile_cols(relation, col_is_string, n_empty=True, n_trailing=True, min_value=False, max_value=False, max_characters=True )}}
+    {{ profile_cols(relation, col_is_string, n_empty=True, n_trailing=True, max_characters=True )}}
 {% endmacro %}
 
 {% macro profile_numbers(relation) %}
     {{ profile_cols(relation, col_is_number, avg_value=True )}}
+{% endmacro %}
+
+{% macro profile_cols_10k(relation) %}
+    {{ profile_cols(relation, sample_n=10000, null_rate=False, distinct_rate=False, info_rate=True )}}
 {% endmacro %}
 
 {#
@@ -36,14 +40,13 @@
 {%- macro profile_cols(
     relation,
     cols=None,
+    sample_n=0,
     rate_precision=4,
     data_type=True,
     n_null=True, null_rate=True,
-    n_unique=True, unique_rate=True,
-    info_rate=False,
-    n_empty=False, n_trailing=False,
+    n_distinct=True, distinct_rate=True, info_rate=False,
+    n_empty=False, n_trailing=False, max_characters=False,
     min_value=True, max_value=True, avg_value=False,
-    max_characters=False,
     most_common_values=True
     ) %}
 
@@ -61,6 +64,14 @@
         {{ exceptions.warn(msg) }}
         select '{{ msg }}' as error
     {% endif %}
+
+    with source as (
+        select * from {{ relation }}
+        {% if sample_n > 0 %}
+        order by random() 
+        limit {{ sample_n }}
+        {% endif %}
+    )
 
     {%- for col in use_cols %}
     
@@ -95,11 +106,11 @@
             end as null_rate
         {% endif %}
 
-        {%- if n_unique %},
-            count(distinct {{ adapter.quote(col.name) }} ) as n_unique
+        {%- if n_distinct %},
+            count(distinct {{ adapter.quote(col.name) }} ) as n_distinct
         {% endif %}
 
-        {%- if unique_rate %},
+        {%- if distinct_rate %},
             {# 
             {% call rate_with_precision(rate_precision) %}
                 count(distinct {{ adapter.quote(col.name) }})
@@ -114,14 +125,14 @@
                     * power(10.0, {{ rate_precision }}) / count(*)
                 ) 
             ) / power(10.0, {{ rate_precision }})
-            end as unique_rate
+            end as distinct_rate
         {% endif %}
 
         {%- if info_rate %},
             round((
                 with freq as (
                     select count(*) as f
-                    from {{ relation }}
+                    from source
                     group by {{ adapter.quote(col.name) }}
                 ),
                 n as (
@@ -147,6 +158,14 @@
             {% endif %} as n_trailing
         {% endif %}
 
+        {%- if max_characters %},
+            {%- if col.is_string() %}
+            max(char_length({{ adapter.quote(col.name) }}))
+            {% else %}
+            null::integer
+            {% endif %} as max_characters
+        {% endif %}
+
         {#
         -- There is no min/max for boolean on PostgreSQL, so this converts them to 
         -- a string ('true' or 'false') before ordering, however it also converts
@@ -154,9 +173,7 @@
         -- to enhance dbt's Column class with is_date and is_boolean properties.
         #}
         {%- if min_value %},
-            {%- if col.is_string() %}
-            null::varchar
-            {% elif col.is_number() %}
+            {%- if col.is_number() %}
             cast(min({{ adapter.quote(col.name) }}) as varchar)
             {% else %}
             min(cast({{ adapter.quote(col.name) }} as varchar))
@@ -164,9 +181,7 @@
         {% endif %}
 
         {%- if max_value %},
-            {%- if col.is_string() %}
-            null::varchar
-            {% elif col.is_number() %}
+            {%- if col.is_number() %}
             cast(max({{ adapter.quote(col.name) }}) as varchar)
             {% else %}
             max(cast({{ adapter.quote(col.name) }} as varchar))
@@ -181,14 +196,6 @@
             {% endif %} as avg_value
         {% endif %}
 
-        {%- if max_characters %},
-            {%- if col.is_string() %}
-            max(char_length({{ adapter.quote(col.name) }}))
-            {% else %}
-            null::integer
-            {% endif %} as max_characters
-        {% endif %}
-
         {%- if most_common_values %},
             array_to_string(
                 array(
@@ -201,7 +208,7 @@
                                 'NULL'
                             ) as val, 
                             count(*) as freq
-                        from {{ relation }}
+                        from source
                         group by 1
                         order by count(*) desc
                         limit 5
@@ -211,7 +218,7 @@
             ', ') as most_common_values
         {% endif %}
 
-        from {{ relation }}
+        from source
 
         {% if not loop.last -%} union all {%- endif -%}
     
