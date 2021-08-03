@@ -14,9 +14,29 @@
     {{ profile_cols(relation, col_is_number, avg_value=True )}}
 {% endmacro %}
 
-{% macro profile_cols(
+{#
+--Output 0 or 1 iff input is 0 or 1, otherwise
+--show the number with required precision in range (0,1).
+--
+--Same as TRUNC(number, precision) but only 0 -> 0;
+--anything slightly above 0 maps to power(0.1, precision).
+#}
+{% macro rate_with_precision(precision) %}
+    case when ({{ caller() }}) = 0 then 0.0
+    else 
+        greatest(1.0, 
+            trunc(
+                {{- caller() -}}
+                * power(10.0, {{precision}}) / count(*)
+            ) 
+        ) / power(10.0, {{precision}})
+    end
+{% endmacro %}
+
+{%- macro profile_cols(
     relation,
     cols=None,
+    rate_precision=4,
     data_type=True,
     n_null=True, null_rate=True,
     n_unique=True, unique_rate=True,
@@ -56,12 +76,21 @@
         {% endif %}
 
         {%- if null_rate %},
-            case when count(case when {{ adapter.quote(col.name) }} is null then 1 end) = 0 then 0.0
-            else greatest(0.0001, trunc(
-                    10000.0 * 
+            {#--Not working, due to recompilation bugs: workaround is to 
+              --delete the file target/partial_parse.msgpack, but this is a pain.
+            {% call rate_with_precision(rate_precision) %}
+                count(case when {{ adapter.quote(col.name) }} is null then 1 end)
+            {% endcall %} 
+            #} 
+            case when (
+                count(case when {{ adapter.quote(col.name) }} is null then 1 end)
+            ) = 0 then 0.0
+            else greatest(1.0, 
+                trunc(
                     count(case when {{ adapter.quote(col.name) }} is null then 1 end)
-                    / count(*)
-                ) / 10000.0) 
+                    * power(10.0, {{ rate_precision }}) / count(*)
+                ) 
+            ) / power(10.0, {{ rate_precision }})
             end as null_rate
         {% endif %}
 
@@ -70,12 +99,20 @@
         {% endif %}
 
         {%- if unique_rate %},
-            case when count(distinct {{ adapter.quote(col.name) }}) = 0 then 0.0
-            else greatest(0.0001, trunc(
-                    10000.0 * 
-                    count(distinct {{ adapter.quote(col.name) }})
-                    / count(*)
-                ) / 10000.0) 
+            {# 
+            {% call rate_with_precision(rate_precision) %}
+                count(distinct {{ adapter.quote(col.name) }})
+            {% endcall %}
+            #} 
+            case when (
+                count(distinct {{ adapter.quote(col.name) }} )
+            ) = 0 then 0.0
+            else greatest(1.0, 
+                trunc(
+                    count(distinct {{ adapter.quote(col.name) }} )
+                    * power(10.0, {{ rate_precision }}) / count(*)
+                ) 
+            ) / power(10.0, {{ rate_precision }})
             end as unique_rate
         {% endif %}
 
