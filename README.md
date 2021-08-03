@@ -1,4 +1,4 @@
-# Dada is DAta about DAta
+# dada: data about data [for dbt]
  
 `dada` is an add-on package for [`dbt`](https://www.getdbt.com/) that helps
 you, the heroic data analyst or engineer, rapidly explore and profile the data in 
