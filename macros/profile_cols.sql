@@ -14,6 +14,10 @@
     {{ profile_cols(relation, col_is_number, avg_value=True )}}
 {% endmacro %}
 
+{% macro profile_cols_10k(relation) %}
+    {{ profile_cols(relation, sample_n=10000, null_rate=False, unique_rate=False, info_rate=True, n_empty=True, n_trailing=True, avg_value=True, max_characters=True )}}
+{% endmacro %}
+
 {#
 --Output 0 or 1 iff input is 0 or 1, otherwise
 --show the number with required precision in range (0,1).
