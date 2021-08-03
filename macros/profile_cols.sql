@@ -76,19 +76,43 @@
         {% endif %}
 
         {%- if null_rate %},
-            {% call rate_with_precision(rate_precision) %}
+            {#--Not working, due to recompilation bugs: workaround is to 
+              --delete the file target/partial_parse.msgpack 
+                {% call rate_with_precision(rate_precision) %}
                 count(case when {{ adapter.quote(col.name) }} is null then 1 end)
-            {% endcall %} as null_rate
+            {% endcall %} #} 
+            case when (
+                count(case when {{ adapter.quote(col.name) }} is null then 1 end)
+            ) = 0 then 0.0
+            else greatest(1.0, 
+                trunc(
+                    count(case when {{ adapter.quote(col.name) }} is null then 1 end)
+                    * power(10.0, {{ rate_precision }}) / count(*)
+                ) 
+            ) / power(10.0, {{ rate_precision }})
+            end as null_rate
         {% endif %}
+
+
 
         {%- if n_unique %},
             count(distinct {{ adapter.quote(col.name) }} ) as n_unique
         {% endif %}
 
         {%- if unique_rate %},
-            {% call rate_with_precision(rate_precision) %}
+            {# call rate_with_precision(rate_precision) %}
                 count(distinct {{ adapter.quote(col.name) }})
-            {% endcall %} as unique_rate
+            {% endcall #} 
+            case when (
+                count(distinct {{ adapter.quote(col.name) }} )
+            ) = 0 then 0.0
+            else greatest(1.0, 
+                trunc(
+                    count(distinct {{ adapter.quote(col.name) }} )
+                    * power(10.0, {{ rate_precision }}) / count(*)
+                ) 
+            ) / power(10.0, {{ rate_precision }})
+            end as unique_rate
         {% endif %}
 
         {%- if n_empty %},
