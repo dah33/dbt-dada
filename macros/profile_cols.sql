@@ -7,7 +7,7 @@
 {% endmacro %}
 
 {% macro profile_strings(relation) %}
-    {{ profile_cols(relation, col_is_string, n_empty=True, n_trailing=True, min_value=False, max_value=False )}}
+    {{ profile_cols(relation, col_is_string, n_empty=True, n_trailing=True, max_characters=True )}}
 {% endmacro %}
 
 {% macro profile_numbers(relation) %}
@@ -173,9 +173,7 @@
         -- to enhance dbt's Column class with is_date and is_boolean properties.
         #}
         {%- if min_value %},
-            {%- if col.is_string() %}
-            null::varchar
-            {% elif col.is_number() %}
+            {%- if col.is_number() %}
             cast(min({{ adapter.quote(col.name) }}) as varchar)
             {% else %}
             min(cast({{ adapter.quote(col.name) }} as varchar))
@@ -183,9 +181,7 @@
         {% endif %}
 
         {%- if max_value %},
-            {%- if col.is_string() %}
-            null::varchar
-            {% elif col.is_number() %}
+            {%- if col.is_number() %}
             cast(max({{ adapter.quote(col.name) }}) as varchar)
             {% else %}
             max(cast({{ adapter.quote(col.name) }} as varchar))
