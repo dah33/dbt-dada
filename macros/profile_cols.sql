@@ -118,7 +118,7 @@
         {% endif %}
 
         {%- if info_rate %},
-            (
+            round((
                 with freq as (
                     select count(*) as f
                     from {{ relation }}
@@ -128,7 +128,7 @@
                     select sum(f) as n from freq
                 )
                 select -sum(f/n*ln(f/n)/ln(n)) from freq, n
-            ) as info_rate
+            ), {{ rate_precision }}) as info_rate
         {% endif %}
 
         {%- if n_empty %},
