@@ -18,8 +18,8 @@
 --Output 0 or 1 iff input is 0 or 1, otherwise
 --show the number with required precision in range (0,1).
 --
---Same as TRUNC(number, precision) but only 0 -> 0;
---anything slightly above 0 maps to power(0.1, precision).
+--Same as TRUNC(number, precision) but anything slightly 
+--above 0 maps to power(0.1, precision).
 #}
 {% macro rate_with_precision(precision) %}
     case when ({{ caller() }}) = 0 then 0.0
@@ -40,6 +40,7 @@
     data_type=True,
     n_null=True, null_rate=True,
     n_unique=True, unique_rate=True,
+    info_rate=False,
     n_empty=False, n_trailing=False,
     min_value=True, max_value=True, avg_value=False,
     max_characters=False,
@@ -114,6 +115,20 @@
                 ) 
             ) / power(10.0, {{ rate_precision }})
             end as unique_rate
+        {% endif %}
+
+        {%- if info_rate %},
+            round((
+                with freq as (
+                    select count(*) as f
+                    from {{ relation }}
+                    group by {{ adapter.quote(col.name) }}
+                ),
+                n as (
+                    select sum(f) as n from freq
+                )
+                select -sum(f/n*ln(f/n)/ln(n)) from freq, n
+            ), {{ rate_precision }}) as info_rate
         {% endif %}
 
         {%- if n_empty %},
