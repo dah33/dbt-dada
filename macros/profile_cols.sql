@@ -86,13 +86,9 @@
         {% endif %}
 
         {%- if unique_rate %},
-            case when count(distinct {{ adapter.quote(col.name) }}) = 0 then 0.0
-            else greatest(0.0001, trunc(
-                    10000.0 * 
-                    count(distinct {{ adapter.quote(col.name) }})
-                    / count(*)
-                ) / 10000.0) 
-            end as unique_rate
+            {% call rate_with_precision(rate_precision) %}
+                count(distinct {{ adapter.quote(col.name) }})
+            {% endcall %} as unique_rate
         {% endif %}
 
         {%- if n_empty %},
