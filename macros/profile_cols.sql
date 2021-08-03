@@ -62,6 +62,10 @@
         select '{{ msg }}' as error
     {% endif %}
 
+    with source as (
+        select * from {{ relation }}
+    )
+
     {%- for col in use_cols %}
     
         select
@@ -121,7 +125,7 @@
             round((
                 with freq as (
                     select count(*) as f
-                    from {{ relation }}
+                    from source
                     group by {{ adapter.quote(col.name) }}
                 ),
                 n as (
@@ -201,7 +205,7 @@
                                 'NULL'
                             ) as val, 
                             count(*) as freq
-                        from {{ relation }}
+                        from source
                         group by 1
                         order by count(*) desc
                         limit 5
@@ -211,7 +215,7 @@
             ', ') as most_common_values
         {% endif %}
 
-        from {{ relation }}
+        from source
 
         {% if not loop.last -%} union all {%- endif -%}
     
