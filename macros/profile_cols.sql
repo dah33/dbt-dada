@@ -40,6 +40,7 @@
     data_type=True,
     n_null=True, null_rate=True,
     n_unique=True, unique_rate=True,
+    info_rate=False,
     n_empty=False, n_trailing=False,
     min_value=True, max_value=True, avg_value=False,
     max_characters=False,
@@ -114,6 +115,20 @@
                 ) 
             ) / power(10.0, {{ rate_precision }})
             end as unique_rate
+        {% endif %}
+
+        {%- if info_rate %},
+            (
+                with freq as (
+                    select count(*) as f
+                    from {{ relation }}
+                    group by {{ adapter.quote(col.name) }}
+                ),
+                n as (
+                    select sum(f) as n from freq
+                )
+                select -sum(f/n*ln(f/n)/ln(n)) from freq, n
+            ) as info_rate
         {% endif %}
 
         {%- if n_empty %},
