@@ -52,19 +52,6 @@
 
     {% set all_cols = adapter.get_columns_in_relation(relation) %}
 
-    {% set use_cols = [] %}
-    {% for col in all_cols if cols is none 
-        or (cols is sequence and col.name is in(cols)) 
-        or (cols is callable and cols(col)) %}
-        {{ use_cols.append(col) or "" }}
-    {% endfor %}
-
-    {% if use_cols|length == 0 %}
-        {% set msg = 'No columns match the argument `cols`' %}
-        {{ exceptions.warn(msg) }}
-        select '{{ msg }}' as error
-    {% endif %}
-
     with source as (
         select * from {{ relation }}
         {% if sample_n > 0 %}
@@ -73,7 +60,9 @@
         {% endif %}
     )
 
-    {%- for col in use_cols %}
+    {%- for col in all_cols if cols is none 
+        or (cols is sequence and col.name is in(cols)) 
+        or (cols is callable and cols(col)) %}
     
         select
 
@@ -221,6 +210,12 @@
         from source
 
         {% if not loop.last -%} union all {%- endif -%}
+    
+    {% else %}
+
+        {% set msg = 'No columns match the argument `cols`' %}
+        {{ exceptions.warn(msg) }}
+        select '{{ msg }}' as error    
     
     {% endfor %}
 
