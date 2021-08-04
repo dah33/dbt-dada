@@ -7,7 +7,7 @@
 {% endmacro %}
 
 {% macro profile_strings(relation) %}
-    {{ profile_cols(relation, col_is_string, n_empty=True, n_trailing=True, max_characters=True )}}
+    {{ profile_cols(relation, col_is_string, n_empty=True, max_characters=True )}}
 {% endmacro %}
 
 {% macro profile_numbers(relation) %}
@@ -41,7 +41,7 @@
     data_type=True,
     n_null=True, null_rate=True,
     n_distinct=True, distinct_rate=True, info_rate=False,
-    n_empty=False, n_trailing=False, max_characters=False,
+    n_empty=False, max_characters=False,
     min_value=True, max_value=True, avg_value=False,
     most_common_values=True
     ) %}
@@ -135,14 +135,6 @@
             {% endif %} as n_empty
         {% endif %}
 
-        {%- if n_trailing %},
-            {%- if col.is_string() %}
-            count(case when {{ adapter.quote(col.name) }} != rtrim({{ adapter.quote(col.name) }}) then 1 end)
-            {% else %}
-            null::integer
-            {% endif %} as n_trailing
-        {% endif %}
-
         {%- if max_characters %},
             {%- if col.is_string() %}
             max(char_length({{ adapter.quote(col.name) }}))
@@ -161,7 +153,9 @@
             {%- if col.is_number() %}
             cast(min({{ adapter.quote(col.name) }}) as varchar)
             {% else %}
+            {% if col.is_string() %}'"' || {% endif -%}
             min(cast({{ adapter.quote(col.name) }} as varchar))
+            {%- if col.is_string() %} || '"'{% endif %}
             {% endif %} as min_value
         {% endif %}
 
@@ -169,7 +163,9 @@
             {%- if col.is_number() %}
             cast(max({{ adapter.quote(col.name) }}) as varchar)
             {% else %}
+            {% if col.is_string() %}'"' || {% endif -%}
             max(cast({{ adapter.quote(col.name) }} as varchar))
+            {%- if col.is_string() %} || '"'{% endif %}
             {% endif %} as max_value
         {% endif %}
 
